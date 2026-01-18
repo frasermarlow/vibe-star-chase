@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Star Chase - Find Your Opponent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+        }
+        #ui h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #turn-indicator {
+            font-size: 18px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        #instructions {
+            font-size: 14px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            max-width: 250px;
+            line-height: 1.5;
+        }
+        #win-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(40, 40, 40, 0.95);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            padding: 40px 60px;
+            border-radius: 5px;
+            font-size: 28px;
+            text-align: center;
+            z-index: 200;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        #win-message button {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            border: 1px solid #00ff88;
+            border-radius: 3px;
+            background: transparent;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #win-message button:hover {
+            background: #00ff88;
+            color: #222;
+        }
+        #close-popup {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #888;
+            line-height: 1;
+        }
+        #close-popup:hover {
+            color: #fff;
+        }
+        #next-level-btn {
+            display: none;
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #00ff88;
+            border-radius: 3px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #next-level-btn:hover {
+            background: #00ff88;
+            color: #222;
+        }
+        #restart-btn {
+            display: none;
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #ff4444;
+            border-radius: 3px;
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #restart-btn:hover {
+            background: #ff4444;
+            color: #222;
+        }
+
+        /* Arcade Splash Screen */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #0a0a20 0%, #1a0a30 50%, #0a0a20 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+        }
+
+        #splash-screen.hidden {
+            display: none;
+        }
+
+        /* CRT Scanlines Effect */
+        #splash-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* CRT Flicker */
+        #splash-screen::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 16, 16, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+            z-index: 2;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.27861; }
+            5% { opacity: 0.34769; }
+            10% { opacity: 0.23604; }
+            15% { opacity: 0.90626; }
+            20% { opacity: 0.18128; }
+            25% { opacity: 0.83891; }
+            30% { opacity: 0.65583; }
+            35% { opacity: 0.67807; }
+            40% { opacity: 0.26559; }
+            45% { opacity: 0.84693; }
+            50% { opacity: 0.96019; }
+            55% { opacity: 0.08594; }
+            60% { opacity: 0.20313; }
+            65% { opacity: 0.71988; }
+            70% { opacity: 0.53455; }
+            75% { opacity: 0.37288; }
+            80% { opacity: 0.71428; }
+            85% { opacity: 0.70419; }
+            90% { opacity: 0.7003; }
+            95% { opacity: 0.36108; }
+            100% { opacity: 0.24387; }
+        }
+
+        .splash-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .splash-title {
+            font-size: clamp(24px, 6vw, 48px);
+            color: #00ffff;
+            text-shadow:
+                0 0 10px #00ffff,
+                0 0 20px #00ffff,
+                0 0 40px #00ffff,
+                0 0 80px #0088ff;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow:
+                    0 0 10px #00ffff,
+                    0 0 20px #00ffff,
+                    0 0 40px #00ffff,
+                    0 0 80px #0088ff;
+            }
+            to {
+                text-shadow:
+                    0 0 20px #00ffff,
+                    0 0 30px #00ffff,
+                    0 0 50px #00ffff,
+                    0 0 100px #0088ff;
+            }
+        }
+
+        .splash-subtitle {
+            font-size: clamp(8px, 2vw, 14px);
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff;
+            margin-bottom: 60px;
+            letter-spacing: 2px;
+        }
+
+        .splash-stars {
+            font-size: clamp(10px, 3vw, 20px);
+            color: #ffff00;
+            margin-bottom: 10px;
+        }
+
+        .press-start {
+            font-size: clamp(12px, 3vw, 20px);
+            color: #ffffff;
+            animation: blink 1s step-start infinite;
+            margin-top: 60px;
+            cursor: pointer;
+            padding: 20px 40px;
+            border: 3px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .press-start:hover {
+            border-color: #00ffff;
+            text-shadow: 0 0 10px #ffffff;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .splash-credits {
+            position: absolute;
+            bottom: 40px;
+            font-size: clamp(6px, 1.5vw, 10px);
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        .insert-coin {
+            font-size: clamp(8px, 2vw, 12px);
+            color: #ffcc00;
+            text-shadow: 0 0 5px #ffcc00;
+            margin-top: 20px;
+            animation: coinBlink 0.5s step-start infinite;
+        }
+
+        @keyframes coinBlink {
+            50% { opacity: 0.5; }
+        }
+
+        .high-score {
+            font-size: clamp(8px, 2vw, 12px);
+            color: #ff4444;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Arcade Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-stars">* * * * *</div>
+            <div class="splash-title">VIBE STAR<br>CHASE</div>
+            <div class="splash-subtitle">- HEXAGONAL PLANET PURSUIT -</div>
+            <div class="high-score">HIGH SCORE: 000000</div>
+            <div class="press-start" id="start-btn">PRESS START</div>
+            <div class="insert-coin">1 CREDIT</div>
+        </div>
+        <div class="splash-credits">© 2026 VIBE ARCADE</div>
+    </div>
+
+    <div id="game-container"></div>
+    <div id="ui">
+        <h1>Vibe Star Chase</h1>
+        <div id="turn-indicator">Gems: 0/5 | Enemy: ? tiles</div>
+        <div id="instructions">
+            <strong>How to play:</strong><br>
+            • Right-click (or Shift+click) to auto-move<br>
+            • Or use keys for manual control:<br>
+            <span style="font-family: monospace; margin-left: 10px;">W E</span><br>
+            <span style="font-family: monospace; margin-left: 10px;">A   D</span><br>
+            <span style="font-family: monospace; margin-left: 10px;">Z X</span><br>
+            • Left-click + drag to rotate view<br>
+            • Collect all 5 <span style="color: #ff4466;">red gems</span> to win!<br>
+            • <span style="color: #00ff88;">Green portals</span> teleport you<br>
+            • Avoid the 3 enemies chasing you<br>
+            • <span style="color: #4488ff;">Blue water</span> = instant death (Lv.3+)<br>
+            • <span style="color: #ff8800;">Orange orb</span> = catch enemies (Lv.3+)<br>
+            • <span style="color: #ff4400;">Red lava</span> = deadly trap! (Lv.8+)
+        </div>
+        <button id="next-level-btn">Next Level</button>
+        <button id="restart-btn" onclick="location.reload()">Restart</button>
+    </div>
+    <div id="win-message">
+        <span id="close-popup" onclick="document.getElementById('win-message').style.display='none'">&times;</span>
+        <div id="winner-text">Player 1 Wins!</div>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
