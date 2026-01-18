@@ -107,6 +107,11 @@ controls.maxPolarAngle = Math.PI; // Allow full vertical rotation
 camera.position.set(0, 30, 50);
 controls.update();
 
+// Cancel camera tracking when user manually rotates
+controls.addEventListener('start', () => {
+    state.cameraIsTracking = false;
+});
+
 // Update key labels when user rotates/pans camera
 controls.addEventListener('change', () => {
     if (state.playerTile !== null && !state.gameOver) {
