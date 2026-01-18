@@ -2084,14 +2084,30 @@ function init() {
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('resize', onWindowResize);
 
-    // Mobile help toggle button
+    // Mobile help popup
     const toggleBtn = document.getElementById('toggle-instructions');
-    const instructions = document.getElementById('instructions');
-    if (toggleBtn && instructions) {
-        toggleBtn.addEventListener('click', () => {
-            instructions.classList.toggle('show');
-            toggleBtn.textContent = instructions.classList.contains('show') ? '✕ Close' : '? Help';
-        });
+    const helpPopup = document.getElementById('mobile-help-popup');
+    const helpOverlay = document.getElementById('help-overlay');
+    const closeHelpBtn = document.querySelector('.close-help');
+
+    function showHelp() {
+        helpPopup.classList.add('show');
+        helpOverlay.classList.add('show');
+    }
+
+    function hideHelp() {
+        helpPopup.classList.remove('show');
+        helpOverlay.classList.remove('show');
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', showHelp);
+    }
+    if (closeHelpBtn) {
+        closeHelpBtn.addEventListener('click', hideHelp);
+    }
+    if (helpOverlay) {
+        helpOverlay.addEventListener('click', hideHelp);
     }
 }
 

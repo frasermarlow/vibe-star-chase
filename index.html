@@ -102,6 +102,87 @@
             background: rgba(50,50,50,0.8);
             color: #fff;
         }
+
+        /* Mobile instructions popup */
+        #mobile-help-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 30, 0.95);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 500;
+            max-width: 90%;
+            width: 320px;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+        }
+        #mobile-help-popup.show {
+            display: block;
+        }
+        #mobile-help-popup h3 {
+            color: #00ffff;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            text-align: center;
+        }
+        #mobile-help-popup ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        #mobile-help-popup li {
+            margin-bottom: 8px;
+        }
+        #mobile-help-popup .close-help {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 30px;
+            background: transparent;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #mobile-help-popup .close-help:hover {
+            background: #00ffff;
+            color: #000;
+        }
+        #help-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 499;
+        }
+        #help-overlay.show {
+            display: block;
+        }
+
+        /* Splash screen instructions */
+        .splash-instructions {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(6px, 1.5vw, 10px);
+            color: #aaa;
+            text-align: left;
+            margin: 30px auto;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            max-width: 300px;
+            line-height: 2;
+        }
+        .splash-instructions span {
+            color: #00ffff;
+        }
         #win-message {
             display: none;
             position: absolute;
@@ -366,16 +447,39 @@
             <div class="splash-stars">* * * * *</div>
             <div class="splash-title">VIBE STAR<br>CHASE</div>
             <div class="splash-subtitle">- HEXAGONAL PLANET PURSUIT -</div>
-            <div class="high-score">HIGH SCORE: 000000</div>
+            <div class="splash-instructions">
+                <span>COLLECT</span> ALL GEMS TO WIN<br>
+                <span>AVOID</span> ENEMIES CHASING YOU<br>
+                <span>USE</span> PORTALS TO TELEPORT<br>
+                <span>MOBILE:</span> DOUBLE-TAP TO MOVE<br>
+                <span>DESKTOP:</span> RIGHT-CLICK TO MOVE
+            </div>
             <div class="press-start" id="start-btn">PRESS START</div>
             <div class="insert-coin">1 CREDIT</div>
         </div>
         <div class="splash-credits">© 2026 VIBE ARCADE</div>
     </div>
 
+    <!-- Mobile Help Popup -->
+    <div id="help-overlay"></div>
+    <div id="mobile-help-popup">
+        <h3>HOW TO PLAY</h3>
+        <ul>
+            <li><strong>Double-tap</strong> a tile to move there</li>
+            <li><strong>Drag</strong> to rotate the view</li>
+            <li>Collect all <span style="color: #ff4466;">red gems</span> to win!</li>
+            <li><span style="color: #00ff88;">Green portals</span> teleport you</li>
+            <li>Avoid enemies chasing you</li>
+            <li><span style="color: #4488ff;">Blue water</span> = instant death (Lv.3+)</li>
+            <li><span style="color: #ff8800;">Orange orb</span> = catch enemies (Lv.3+)</li>
+            <li><span style="color: #ff4400;">Red lava</span> = deadly trap! (Lv.8+)</li>
+        </ul>
+        <button class="close-help">GOT IT</button>
+    </div>
+
     <div id="game-container"></div>
     <div id="ui">
-        <h1>Vibe Star Chase <span style="font-size: 12px; color: #888;">v0.4</span></h1>
+        <h1>Vibe Star Chase <span style="font-size: 12px; color: #888;">v0.5</span></h1>
         <div id="turn-indicator">Gems: 0/5 | Enemy: ? tiles</div>
         <button id="toggle-instructions">? Help</button>
         <div id="instructions">
