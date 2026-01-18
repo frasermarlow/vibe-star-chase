@@ -986,8 +986,9 @@ function updateKeyLabels(currentTileIndex) {
     if (state.gameOver) return;
     if (!state.tiles || !state.tiles[currentTileIndex]) return;
 
-    // Hide labels on mobile (no keyboard)
-    if (window.innerWidth <= 768) return;
+    // Hide labels on mobile/touch devices (no keyboard)
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+    if (isMobile) return;
 
     const currentTile = state.tiles[currentTileIndex];
     const neighbors = currentTile.userData.neighbors;
