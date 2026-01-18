@@ -46,6 +46,62 @@
             max-width: 250px;
             line-height: 1.5;
         }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            #ui {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+            #ui h1 {
+                font-size: 18px;
+                margin-bottom: 5px;
+            }
+            #turn-indicator {
+                font-size: 14px;
+                padding: 8px 12px;
+                margin-bottom: 5px;
+            }
+            #instructions {
+                display: none;
+            }
+            #instructions.show {
+                display: block;
+                font-size: 12px;
+                padding: 8px 12px;
+                max-width: none;
+            }
+            #toggle-instructions {
+                display: inline-block;
+            }
+            #win-message {
+                padding: 20px 30px;
+                font-size: 20px;
+                width: 90%;
+                max-width: 350px;
+            }
+            #win-message button {
+                padding: 8px 20px;
+                font-size: 14px;
+            }
+        }
+
+        #toggle-instructions {
+            display: none;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #666;
+            color: #aaa;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        #toggle-instructions:hover {
+            background: rgba(50,50,50,0.8);
+            color: #fff;
+        }
         #win-message {
             display: none;
             position: absolute;
@@ -321,18 +377,16 @@
     <div id="ui">
         <h1>Vibe Star Chase</h1>
         <div id="turn-indicator">Gems: 0/5 | Enemy: ? tiles</div>
+        <button id="toggle-instructions">? Help</button>
         <div id="instructions">
             <strong>How to play:</strong><br>
-            • Right-click (or Shift+click) to auto-move<br>
-            • Or use keys for manual control:<br>
-            <span style="font-family: monospace; margin-left: 10px;">W E</span><br>
-            <span style="font-family: monospace; margin-left: 10px;">A   D</span><br>
-            <span style="font-family: monospace; margin-left: 10px;">Z X</span><br>
-            • Left-click + drag to rotate view<br>
-            • Collect all 5 <span style="color: #ff4466;">red gems</span> to win!<br>
+            • Double-tap tile to move (mobile) or right-click<br>
+            • Drag to rotate view<br>
+            • Keyboard: <span style="font-family: monospace;">W E A D Z X</span><br>
+            • Collect all <span style="color: #ff4466;">red gems</span> to win!<br>
             • <span style="color: #00ff88;">Green portals</span> teleport you<br>
-            • Avoid the 3 enemies chasing you<br>
-            • <span style="color: #4488ff;">Blue water</span> = instant death (Lv.3+)<br>
+            • Avoid enemies chasing you<br>
+            • <span style="color: #4488ff;">Blue water</span> = death (Lv.3+)<br>
             • <span style="color: #ff8800;">Orange orb</span> = catch enemies (Lv.3+)<br>
             • <span style="color: #ff4400;">Red lava</span> = deadly trap! (Lv.8+)
         </div>

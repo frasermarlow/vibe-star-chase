@@ -986,6 +986,9 @@ function updateKeyLabels(currentTileIndex) {
     if (state.gameOver) return;
     if (!state.tiles || !state.tiles[currentTileIndex]) return;
 
+    // Hide labels on mobile (no keyboard)
+    if (window.innerWidth <= 768) return;
+
     const currentTile = state.tiles[currentTileIndex];
     const neighbors = currentTile.userData.neighbors;
     const currentPos = currentTile.userData.center.clone();
@@ -1578,20 +1581,77 @@ function getClosestEnemyDistance() {
 // Handle right-click for movement
 function onRightClick(event) {
     event.preventDefault(); // Prevent context menu
-    handleMoveClick(event);
+    handleMoveClick(event.clientX, event.clientY);
 }
 
 // Handle shift+click for movement
 function onShiftClick(event) {
     if (event.shiftKey) {
-        handleMoveClick(event);
+        handleMoveClick(event.clientX, event.clientY);
     }
 }
 
-// Common handler for move clicks (right-click or shift+click)
-function handleMoveClick(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+// Touch handling for mobile - detect double taps vs drags
+let touchStartPos = null;
+let touchStartTime = 0;
+let lastTapTime = 0;
+let lastTapPos = null;
+
+function onTouchStart(event) {
+    if (event.touches.length === 1) {
+        touchStartPos = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+        touchStartTime = Date.now();
+    }
+}
+
+function onTouchEnd(event) {
+    if (!touchStartPos) return;
+
+    // Check if it was a tap (short duration, minimal movement)
+    const touchEndTime = Date.now();
+    const duration = touchEndTime - touchStartTime;
+
+    // Use changedTouches for the end position
+    if (event.changedTouches.length === 1) {
+        const endX = event.changedTouches[0].clientX;
+        const endY = event.changedTouches[0].clientY;
+        const dx = endX - touchStartPos.x;
+        const dy = endY - touchStartPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // If short tap with minimal movement, check for double tap
+        if (duration < 300 && distance < 20) {
+            const timeSinceLastTap = touchEndTime - lastTapTime;
+
+            // Check if this is a double tap (second tap within 400ms and near first tap)
+            if (lastTapPos && timeSinceLastTap < 400) {
+                const doubleTapDx = endX - lastTapPos.x;
+                const doubleTapDy = endY - lastTapPos.y;
+                const doubleTapDistance = Math.sqrt(doubleTapDx * doubleTapDx + doubleTapDy * doubleTapDy);
+
+                if (doubleTapDistance < 50) {
+                    // Double tap detected - trigger move
+                    handleMoveClick(endX, endY);
+                    lastTapTime = 0;
+                    lastTapPos = null;
+                    touchStartPos = null;
+                    return;
+                }
+            }
+
+            // Record this tap for potential double tap detection
+            lastTapTime = touchEndTime;
+            lastTapPos = { x: endX, y: endY };
+        }
+    }
+
+    touchStartPos = null;
+}
+
+// Common handler for move clicks (right-click, shift+click, or tap)
+function handleMoveClick(clientX, clientY) {
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(state.tiles);
@@ -2012,9 +2072,21 @@ function init() {
     // Event listeners for gameplay
     window.addEventListener('contextmenu', onRightClick);  // Right-click to move
     window.addEventListener('click', onShiftClick);        // Shift+click to move
+    window.addEventListener('touchstart', onTouchStart, { passive: true });  // Touch for mobile
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('resize', onWindowResize);
+
+    // Mobile help toggle button
+    const toggleBtn = document.getElementById('toggle-instructions');
+    const instructions = document.getElementById('instructions');
+    if (toggleBtn && instructions) {
+        toggleBtn.addEventListener('click', () => {
+            instructions.classList.toggle('show');
+            toggleBtn.textContent = instructions.classList.contains('show') ? '✕ Close' : '? Help';
+        });
+    }
 }
 
 // Animation loop
