@@ -1914,14 +1914,17 @@ function jumpToLevel(level) {
         }
     }
 
-    // Place gems (not on water tiles)
+    // Place gems (not on water, lava, or blocked tiles)
     usedTiles.add(state.playerTile);
     state.enemyTiles.forEach(t => usedTiles.add(t));
 
     while (state.gemTiles.length < state.totalGems) {
         const randomTile = Math.floor(Math.random() * numTiles);
-        // Don't place gems on used tiles or water tiles
-        if (!usedTiles.has(randomTile) && !state.waterTiles.has(randomTile)) {
+        // Don't place gems on used tiles, water, lava, or blocked tiles
+        if (!usedTiles.has(randomTile) &&
+            !state.waterTiles.has(randomTile) &&
+            !state.lavaTiles.has(randomTile) &&
+            !state.blockedTiles.has(randomTile)) {
             state.gemTiles.push(randomTile);
             usedTiles.add(randomTile);
 
