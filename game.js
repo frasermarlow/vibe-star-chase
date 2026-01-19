@@ -714,12 +714,12 @@ function createGem(tile) {
     const tileCenter = tile.userData.center.clone();
     const normal = tileCenter.clone().normalize();
 
-    // Main gem crystal (octahedron shape)
+    // Main gem crystal (octahedron shape) - yellow/gold
     const gemGeom = new THREE.OctahedronGeometry(0.4, 0);
     const gemMat = new THREE.MeshStandardMaterial({
-        color: 0xff0044,
-        emissive: 0xff0022,
-        emissiveIntensity: 0.8,
+        color: 0xffdd00,
+        emissive: 0xffaa00,
+        emissiveIntensity: 1.0,
         roughness: 0.1,
         metalness: 0.9
     });
@@ -730,20 +730,20 @@ function createGem(tile) {
     // Inner glow core
     const coreGeom = new THREE.OctahedronGeometry(0.25, 0);
     const coreMat = new THREE.MeshBasicMaterial({
-        color: 0xff4466,
+        color: 0xffff66,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.8
     });
     const core = new THREE.Mesh(coreGeom, coreMat);
     core.scale.y = 1.3;
     group.add(core);
 
     // Outer glow aura
-    const auraGeom = new THREE.SphereGeometry(0.6, 16, 16);
+    const auraGeom = new THREE.SphereGeometry(0.7, 16, 16);
     const auraMat = new THREE.MeshBasicMaterial({
-        color: 0xff2244,
+        color: 0xffee00,
         transparent: true,
-        opacity: 0.25
+        opacity: 0.3
     });
     const aura = new THREE.Mesh(auraGeom, auraMat);
     group.add(aura);
@@ -751,9 +751,9 @@ function createGem(tile) {
     // Light ring around base
     const ringGeom = new THREE.TorusGeometry(0.5, 0.05, 8, 32);
     const ringMat = new THREE.MeshBasicMaterial({
-        color: 0xff4444,
+        color: 0xffcc00,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.7
     });
     const ring = new THREE.Mesh(ringGeom, ringMat);
     ring.rotation.x = Math.PI / 2;
