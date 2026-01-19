@@ -24,11 +24,12 @@ const state = {
     waterTiles: new Set(), // Water tiles - player drowns if they step on these
     lavaTiles: new Set(), // Lava tiles - player dies, but auto-path doesn't avoid them
     portalEffects: [], // Visual effects for portals
-    // Power orb - allows player to catch enemies for 10 moves
+    // Power orb - player gets 2 moves per enemy move for 10 enemy turns
     orbTile: null,          // Tile index where orb is placed
     orbMesh: null,          // Visual orb object
     orbActive: false,       // Whether orb power is currently active
-    orbMovesRemaining: 0,   // Moves left with orb power
+    orbMovesRemaining: 0,   // Enemy turns left with orb power
+    orbPlayerMovesLeft: 0,  // Player moves left before enemies move (2 when orb active)
     gemTiles: [], // Tiles with collectible gems
     gemMeshes: [], // Visual gem objects
     gemsCollected: 0,
@@ -690,6 +691,7 @@ function regeneratePlanet(level) {
     state.orbTile = null;
     state.orbActive = false;
     state.orbMovesRemaining = 0;
+    state.orbPlayerMovesLeft = 0;
 
     // Remove old key labels
     state.keyLabels.forEach(label => scene.remove(label));
@@ -1346,9 +1348,10 @@ function executePlayerMove(targetIndex) {
 
     // Check if player collected the power orb
     if (state.orbTile !== null && targetIndex === state.orbTile) {
-        // Activate orb power - player can catch enemies for 10 moves
+        // Activate orb power - player gets 2 moves per enemy move for 10 enemy turns
         state.orbActive = true;
         state.orbMovesRemaining = 10;
+        state.orbPlayerMovesLeft = 2; // Start with 2 moves before enemies move
         // Remove orb from game
         if (state.orbMesh) {
             scene.remove(state.orbMesh);
@@ -1373,6 +1376,7 @@ function executePlayerMove(targetIndex) {
         if (state.orbTile !== null && portalDestination === state.orbTile) {
             state.orbActive = true;
             state.orbMovesRemaining = 10;
+            state.orbPlayerMovesLeft = 2;
             if (state.orbMesh) {
                 scene.remove(state.orbMesh);
                 state.orbMesh = null;
@@ -1394,19 +1398,28 @@ function executePlayerMove(targetIndex) {
         return;
     }
 
-    // If orb power is active, check if player catches any enemies
+    // If orb power is active, player gets 2 moves per enemy move
     if (state.orbActive) {
         catchEnemiesNearPlayer();
-        state.orbMovesRemaining--;
-        if (state.orbMovesRemaining <= 0) {
-            state.orbActive = false;
-            // Restore enemies to normal appearance and behavior
-            setEnemiesVulnerable(false);
-        }
-    }
+        state.orbPlayerMovesLeft--;
 
-    // Enemies' turn - each moves one step closer
-    moveEnemies();
+        // Only move enemies when player has used both moves
+        if (state.orbPlayerMovesLeft <= 0) {
+            moveEnemies();
+            state.orbPlayerMovesLeft = 2; // Reset for next round
+            state.orbMovesRemaining--;
+
+            if (state.orbMovesRemaining <= 0) {
+                state.orbActive = false;
+                state.orbPlayerMovesLeft = 0;
+                // Restore enemies to normal appearance and behavior
+                setEnemiesVulnerable(false);
+            }
+        }
+    } else {
+        // Normal mode - enemies move every player move
+        moveEnemies();
+    }
 
     // Check if any enemy caught player (only if orb not active)
     if (!state.orbActive && enemyCaughtPlayer()) {
@@ -1485,7 +1498,7 @@ function endGame(playerWins, reason = 'caught') {
             newFeatures.push('<span style="color: #ff4444;">2 more enemies</span> join the chase');
         } else if (nextLevel === 3) {
             newFeatures.push('<span style="color: #4488ff;">Water tiles</span> - don\'t drown!');
-            newFeatures.push('<span style="color: #ff8800;">Power orb</span> - catch your enemies!');
+            newFeatures.push('<span style="color: #ff8800;">Power orb</span> - 2x speed for 10 turns!');
         } else if (nextLevel === 8) {
             newFeatures.push('<span style="color: #ff4400;">Lava tiles</span> - deadly and deceptive!');
         }
@@ -1558,9 +1571,9 @@ function updateGemDisplay() {
     const indicator = document.getElementById('turn-indicator');
     let displayText = `<span style="color: #88aaff;">Round ${state.round}</span> | <span style="color: #aaaaaa;">${state.tiles.length} tiles</span> | <span style="color: #ff4466;">Gems: ${state.gemsCollected}/${state.totalGems}</span> | <span style="color: #ffaa00;">Enemy: ${getClosestEnemyDistance()}</span>`;
 
-    // Show orb power status if active
+    // Show orb power status if active (2x moves for X more enemy turns)
     if (state.orbActive) {
-        displayText += ` | <span style="color: #ff8800;">Power: ${state.orbMovesRemaining}</span>`;
+        displayText += ` | <span style="color: #ff8800;">2x Speed: ${state.orbMovesRemaining} turns (${state.orbPlayerMovesLeft} moves)</span>`;
     }
 
     indicator.innerHTML = displayText;
@@ -1934,7 +1947,7 @@ function jumpToLevel(level) {
         }
     }
 
-    // Place power orb on level 3+ (allows player to catch enemies for 10 moves)
+    // Place power orb on level 3+ (gives player 2x speed for 10 enemy turns)
     if (level >= 3) {
         let orbPlaced = false;
         let attempts = 0;
