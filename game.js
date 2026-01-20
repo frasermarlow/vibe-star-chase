@@ -43,6 +43,8 @@ const state = {
     heldKey: null,              // Currently held movement key
     // Key label sprites for adjacent hexagons
     keyLabels: [],
+    // Arrow pointing to nearest gem (for mobile)
+    gemArrow: null,
     // Auto-pathfinding queue
     pathQueue: [],              // Array of tile indices to move through
     isAutoMoving: false,        // Whether auto-movement is in progress
@@ -152,26 +154,26 @@ function createStarfield() {
 }
 
 // Create a text sprite for key labels
-function createKeyLabel(text) {
+function createKeyLabel(text, highlight = false) {
     const canvas = document.createElement('canvas');
     const size = 128;
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    // Draw circular background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    // Draw circular background - golden for highlighted, dark for normal
+    ctx.fillStyle = highlight ? 'rgba(255, 215, 0, 0.9)' : 'rgba(0, 0, 0, 0.7)';
     ctx.beginPath();
     ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw border
-    ctx.strokeStyle = '#88aaff';
-    ctx.lineWidth = 4;
+    // Draw border - brighter gold for highlighted
+    ctx.strokeStyle = highlight ? '#ffee88' : '#88aaff';
+    ctx.lineWidth = highlight ? 6 : 4;
     ctx.stroke();
 
-    // Draw text
-    ctx.fillStyle = '#ffffff';
+    // Draw text - dark for highlighted (contrast), white for normal
+    ctx.fillStyle = highlight ? '#000000' : '#ffffff';
     ctx.font = 'bold 64px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -983,6 +985,88 @@ function highlightValidMoves(currentTileIndex) {
     updateKeyLabels(currentTileIndex);
 }
 
+// Find the best neighbor to move toward the nearest gem
+// Returns the neighbor tile index that gets closest to any gem, or null if no gems
+function findDirectionToNearestGem(currentTileIndex) {
+    if (!state.gemTiles || state.gemTiles.length === 0) return null;
+
+    const currentTile = state.tiles[currentTileIndex];
+    if (!currentTile) return null;
+
+    const neighbors = currentTile.userData.neighbors;
+    let bestNeighbor = null;
+    let shortestPath = Infinity;
+
+    // For each gem, find the path and track which neighbor leads to shortest overall path
+    for (const gemTile of state.gemTiles) {
+        const path = findPath(currentTileIndex, gemTile);
+        if (path && path.length > 1 && path.length < shortestPath) {
+            shortestPath = path.length;
+            bestNeighbor = path[1]; // First step toward this gem
+        }
+    }
+
+    return bestNeighbor;
+}
+
+// Create arrow sprite pointing to nearest gem (for mobile)
+function updateGemArrow(currentTileIndex, targetNeighborIndex) {
+    const currentTile = state.tiles[currentTileIndex];
+    const targetTile = state.tiles[targetNeighborIndex];
+    if (!currentTile || !targetTile) return;
+
+    const currentPos = currentTile.userData.center.clone();
+    const targetPos = targetTile.userData.center.clone();
+    const normal = currentPos.clone().normalize();
+
+    // Direction from player to target neighbor
+    const direction = targetPos.clone().sub(currentPos).normalize();
+
+    // Create arrow canvas texture
+    const canvas = document.createElement('canvas');
+    const size = 64;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Draw golden arrow pointing right (will be rotated by lookAt)
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+    ctx.strokeStyle = '#ffee88';
+    ctx.lineWidth = 2;
+
+    // Arrow shape pointing up
+    ctx.beginPath();
+    ctx.moveTo(size / 2, 8);           // Top point
+    ctx.lineTo(size - 12, size - 16);  // Bottom right
+    ctx.lineTo(size / 2, size - 24);   // Inner notch
+    ctx.lineTo(12, size - 16);         // Bottom left
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(0.8, 0.8, 1);
+
+    // Position arrow slightly above and in front of player
+    const arrowPos = currentPos.clone().add(normal.clone().multiplyScalar(2.2));
+    // Offset slightly toward target direction
+    arrowPos.add(direction.clone().multiplyScalar(0.5));
+    sprite.position.copy(arrowPos);
+
+    // Store direction for rotation in animate loop
+    sprite.userData.targetDirection = direction;
+    sprite.userData.normal = normal;
+
+    scene.add(sprite);
+    state.gemArrow = sprite;
+}
+
 // Update key labels showing which key moves to which neighbor
 // Uses optimal assignment with no threshold to ensure stable labels during camera movement
 function updateKeyLabels(currentTileIndex) {
@@ -990,12 +1074,28 @@ function updateKeyLabels(currentTileIndex) {
     state.keyLabels.forEach(label => scene.remove(label));
     state.keyLabels = [];
 
+    // Remove existing gem arrow (for mobile)
+    if (state.gemArrow) {
+        scene.remove(state.gemArrow);
+        state.gemArrow = null;
+    }
+
     if (state.gameOver) return;
     if (!state.tiles || !state.tiles[currentTileIndex]) return;
 
-    // Hide labels on mobile/touch devices (no keyboard)
+    // Find which neighbor leads to the nearest gem
+    const gemNeighbor = findDirectionToNearestGem(currentTileIndex);
+
+    // Check if mobile/touch device
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
-    if (isMobile) return;
+
+    if (isMobile) {
+        // On mobile, show an arrow pointing to nearest gem
+        if (gemNeighbor !== null) {
+            updateGemArrow(currentTileIndex, gemNeighbor);
+        }
+        return;
+    }
 
     const currentTile = state.tiles[currentTileIndex];
     const neighbors = currentTile.userData.neighbors;
@@ -1038,8 +1138,11 @@ function updateKeyLabels(currentTileIndex) {
         usedKeys.add(key);
         labeledNeighbors.add(neighborIdx);
 
+        // Highlight if this neighbor leads to nearest gem
+        const isGemDirection = (neighborIdx === gemNeighbor);
+
         // Create and position the label
-        const label = createKeyLabel(key.toUpperCase());
+        const label = createKeyLabel(key.toUpperCase(), isGemDirection);
         const neighborTile = state.tiles[neighborIdx];
         const tileCenter = neighborTile.userData.center.clone();
         const normal = tileCenter.clone().normalize();
@@ -2278,6 +2381,24 @@ function animate() {
             }
         }
     });
+
+    // Rotate gem arrow to point in correct screen-space direction
+    if (state.gemArrow && state.gemArrow.userData.targetDirection) {
+        const dir = state.gemArrow.userData.targetDirection;
+        const arrowPos = state.gemArrow.position.clone();
+
+        // Project arrow position and target point to screen space
+        const targetPoint = arrowPos.clone().add(dir);
+        const arrowScreen = arrowPos.clone().project(camera);
+        const targetScreen = targetPoint.clone().project(camera);
+
+        // Calculate screen-space angle (sprite draws arrow pointing up, so offset by -90 degrees)
+        const dx = targetScreen.x - arrowScreen.x;
+        const dy = targetScreen.y - arrowScreen.y;
+        const angle = Math.atan2(dx, dy); // atan2(dx, dy) gives angle from vertical
+
+        state.gemArrow.material.rotation = -angle;
+    }
 
     controls.update();
     renderer.render(scene, camera);
