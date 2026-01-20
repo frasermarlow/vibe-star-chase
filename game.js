@@ -1053,15 +1053,13 @@ function updateGemArrow(currentTileIndex, targetNeighborIndex) {
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(0.8, 0.8, 1);
 
-    // Position arrow slightly above and in front of player
+    // Position arrow slightly above player
     const arrowPos = currentPos.clone().add(normal.clone().multiplyScalar(2.2));
-    // Offset slightly toward target direction
-    arrowPos.add(direction.clone().multiplyScalar(0.5));
     sprite.position.copy(arrowPos);
 
-    // Store direction for rotation in animate loop
-    sprite.userData.targetDirection = direction;
-    sprite.userData.normal = normal;
+    // Store actual positions for stable screen-space angle calculation
+    sprite.userData.playerPos = currentPos.clone();
+    sprite.userData.targetPos = targetPos.clone();
 
     scene.add(sprite);
     state.gemArrow = sprite;
@@ -2383,18 +2381,14 @@ function animate() {
     });
 
     // Rotate gem arrow to point in correct screen-space direction
-    if (state.gemArrow && state.gemArrow.userData.targetDirection) {
-        const dir = state.gemArrow.userData.targetDirection;
-        const arrowPos = state.gemArrow.position.clone();
+    if (state.gemArrow && state.gemArrow.userData.playerPos && state.gemArrow.userData.targetPos) {
+        // Project player and target tile positions to screen space
+        const playerScreen = state.gemArrow.userData.playerPos.clone().project(camera);
+        const targetScreen = state.gemArrow.userData.targetPos.clone().project(camera);
 
-        // Project arrow position and target point to screen space
-        const targetPoint = arrowPos.clone().add(dir);
-        const arrowScreen = arrowPos.clone().project(camera);
-        const targetScreen = targetPoint.clone().project(camera);
-
-        // Calculate screen-space angle (sprite draws arrow pointing up, so offset by -90 degrees)
-        const dx = targetScreen.x - arrowScreen.x;
-        const dy = targetScreen.y - arrowScreen.y;
+        // Calculate screen-space angle (sprite draws arrow pointing up)
+        const dx = targetScreen.x - playerScreen.x;
+        const dy = targetScreen.y - playerScreen.y;
         const angle = Math.atan2(dx, dy); // atan2(dx, dy) gives angle from vertical
 
         state.gemArrow.material.rotation = -angle;
