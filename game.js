@@ -985,42 +985,41 @@ function highlightValidMoves(currentTileIndex) {
     updateKeyLabels(currentTileIndex);
 }
 
-// Find the best neighbor to move toward the nearest gem
-// Returns the neighbor tile index that gets closest to any gem, or null if no gems
-function findDirectionToNearestGem(currentTileIndex) {
+// Find the nearest gem and the best neighbor to move toward it
+// Returns { gemTile, neighborTile } or null if no gems
+function findNearestGemInfo(currentTileIndex) {
     if (!state.gemTiles || state.gemTiles.length === 0) return null;
 
     const currentTile = state.tiles[currentTileIndex];
     if (!currentTile) return null;
 
-    const neighbors = currentTile.userData.neighbors;
+    let nearestGem = null;
     let bestNeighbor = null;
     let shortestPath = Infinity;
 
-    // For each gem, find the path and track which neighbor leads to shortest overall path
+    // For each gem, find the path and track which one is closest
     for (const gemTile of state.gemTiles) {
         const path = findPath(currentTileIndex, gemTile);
         if (path && path.length > 1 && path.length < shortestPath) {
             shortestPath = path.length;
+            nearestGem = gemTile;
             bestNeighbor = path[1]; // First step toward this gem
         }
     }
 
-    return bestNeighbor;
+    if (nearestGem === null) return null;
+    return { gemTile: nearestGem, neighborTile: bestNeighbor };
 }
 
 // Create arrow sprite pointing to nearest gem (for mobile)
-function updateGemArrow(currentTileIndex, targetNeighborIndex) {
+function updateGemArrow(currentTileIndex, gemTileIndex) {
     const currentTile = state.tiles[currentTileIndex];
-    const targetTile = state.tiles[targetNeighborIndex];
-    if (!currentTile || !targetTile) return;
+    const gemTile = state.tiles[gemTileIndex];
+    if (!currentTile || !gemTile) return;
 
-    const currentPos = currentTile.userData.center.clone();
-    const targetPos = targetTile.userData.center.clone();
-    const normal = currentPos.clone().normalize();
-
-    // Direction from player to target neighbor
-    const direction = targetPos.clone().sub(currentPos).normalize();
+    const playerPos = currentTile.userData.center.clone();
+    const gemPos = gemTile.userData.center.clone();
+    const normal = playerPos.clone().normalize();
 
     // Create arrow canvas texture
     const canvas = document.createElement('canvas');
@@ -1029,7 +1028,7 @@ function updateGemArrow(currentTileIndex, targetNeighborIndex) {
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    // Draw golden arrow pointing right (will be rotated by lookAt)
+    // Draw golden arrow pointing up (default orientation)
     ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
     ctx.strokeStyle = '#ffee88';
     ctx.lineWidth = 2;
@@ -1054,12 +1053,12 @@ function updateGemArrow(currentTileIndex, targetNeighborIndex) {
     sprite.scale.set(0.8, 0.8, 1);
 
     // Position arrow slightly above player
-    const arrowPos = currentPos.clone().add(normal.clone().multiplyScalar(2.2));
+    const arrowPos = playerPos.clone().add(normal.clone().multiplyScalar(2.2));
     sprite.position.copy(arrowPos);
 
-    // Store actual positions for stable screen-space angle calculation
-    sprite.userData.playerPos = currentPos.clone();
-    sprite.userData.targetPos = targetPos.clone();
+    // Store player and gem positions for rotation calculation
+    sprite.userData.playerPos = playerPos;
+    sprite.userData.gemPos = gemPos;
 
     scene.add(sprite);
     state.gemArrow = sprite;
@@ -1081,16 +1080,16 @@ function updateKeyLabels(currentTileIndex) {
     if (state.gameOver) return;
     if (!state.tiles || !state.tiles[currentTileIndex]) return;
 
-    // Find which neighbor leads to the nearest gem
-    const gemNeighbor = findDirectionToNearestGem(currentTileIndex);
+    // Find nearest gem info (gem location and best neighbor to move toward it)
+    const gemInfo = findNearestGemInfo(currentTileIndex);
 
     // Check if mobile/touch device
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
 
     if (isMobile) {
         // On mobile, show an arrow pointing to nearest gem
-        if (gemNeighbor !== null) {
-            updateGemArrow(currentTileIndex, gemNeighbor);
+        if (gemInfo !== null) {
+            updateGemArrow(currentTileIndex, gemInfo.gemTile);
         }
         return;
     }
@@ -1137,7 +1136,7 @@ function updateKeyLabels(currentTileIndex) {
         labeledNeighbors.add(neighborIdx);
 
         // Highlight if this neighbor leads to nearest gem
-        const isGemDirection = (neighborIdx === gemNeighbor);
+        const isGemDirection = gemInfo && (neighborIdx === gemInfo.neighborTile);
 
         // Create and position the label
         const label = createKeyLabel(key.toUpperCase(), isGemDirection);
@@ -2380,16 +2379,21 @@ function animate() {
         }
     });
 
-    // Rotate gem arrow to point in correct screen-space direction
-    if (state.gemArrow && state.gemArrow.userData.playerPos && state.gemArrow.userData.targetPos) {
-        // Project player and target tile positions to screen space
-        const playerScreen = state.gemArrow.userData.playerPos.clone().project(camera);
-        const targetScreen = state.gemArrow.userData.targetPos.clone().project(camera);
+    // Rotate gem arrow to point toward nearest gem
+    if (state.gemArrow && state.gemArrow.userData.playerPos && state.gemArrow.userData.gemPos) {
+        const playerPos = state.gemArrow.userData.playerPos;
+        const gemPos = state.gemArrow.userData.gemPos;
 
-        // Calculate screen-space angle (sprite draws arrow pointing up)
-        const dx = targetScreen.x - playerScreen.x;
-        const dy = targetScreen.y - playerScreen.y;
-        const angle = Math.atan2(dx, dy); // atan2(dx, dy) gives angle from vertical
+        // Get direction from player to gem in world space
+        const worldDir = gemPos.clone().sub(playerPos).normalize();
+
+        // Transform direction to camera view space for stable screen-relative angle
+        // In view space: x = right, y = up, z = toward camera
+        const viewDir = worldDir.clone().transformDirection(camera.matrixWorldInverse);
+
+        // Calculate angle from vertical (y-axis up) in the view xy plane
+        // Arrow texture points up, so we measure angle from y-axis
+        const angle = Math.atan2(viewDir.x, viewDir.y);
 
         state.gemArrow.material.rotation = -angle;
     }
